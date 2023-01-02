@@ -4,15 +4,25 @@ using Photon.Realtime;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
-public class Character : MonoBehaviourPunCallbacks,IPunObservable
+public class Character : MonoBehaviourPunCallbacks, IPunObservable
 {
     float AxisH;
     float AxisV;
+
+    // Ã¼·Â
+    float HP { get; set; }
+    [SerializeField] Slider HPSlider;
+
+    // test ¿ë
     [SerializeField] bool a;
+
     private void Awake()
     {
         a = false;
+        HP = 100f;
     }
     private void Update()
     {
@@ -20,23 +30,40 @@ public class Character : MonoBehaviourPunCallbacks,IPunObservable
         AxisV = Input.GetAxisRaw("Vertical");
 
         if (photonView.IsMine)
-        {         
+        {
             if ((AxisH != 0) || (AxisV != 0))
             {
                 transform.Translate(new Vector3(AxisH, 0, AxisV) * Time.deltaTime * 5f);
             }
+            if (SceneManager.GetActiveScene().buildIndex == 2)
+            {              
+                HPSlider.value = HP / 100f;
+            }
         }
-        
+    }
+    private void OnCollisionEnter(Collision collision)
+    {
+        if (collision.gameObject.name == "Character")
+        {
+            float damage = collision.gameObject.GetComponent<Banana>().BananaPower;
+            photonView.RPC("HITRPC", RpcTarget.All, damage);
+        }
     }
 
-    public void Run() 
+    [PunRPC]
+    public void HITRPC(float damage)
+    {
+        HP -= damage;
+    }
+
+    public void Run()
     {
     }
 
     [PunRPC]
-    public void Jump() 
+    public void Jump()
     {
-        if (a==true)
+        if (a == true)
         {
             a = false;
         }
@@ -49,14 +76,14 @@ public class Character : MonoBehaviourPunCallbacks,IPunObservable
 
     public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
     {
-        if(stream.IsWriting)
+        if (stream.IsWriting)
         {
             stream.SendNext(a);
         }
         else
         {
             a = (bool)stream.ReceiveNext();
-            
+
         }
         Debug.Log(a);
     }
